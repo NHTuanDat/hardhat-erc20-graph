@@ -4,10 +4,24 @@ import "hardhat-deploy"
 import "dotenv/config"
 
 const GANACHE_ACCOUNTS = [
-    process.env.GANACHE_PK0 || "",
-    process.env.GANACHE_PK1 || "",
-    process.env.GANACHE_PK2 || "",
-    process.env.GANACHE_PK3 || "",
+    process.env.GANACHE_PK0 || "<GANACHE PRIVATE KEY 0>",
+    process.env.GANACHE_PK1 || "<GANACHE PRIVATE KEY 1>",
+    process.env.GANACHE_PK2 || "<GANACHE PRIVATE KEY 2>",
+    process.env.GANACHE_PK3 || "<GANACHE PRIVATE KEY 3>",
+]
+
+const RINKEBY_RPC_URL =
+    process.env.RINKEBY_RPC_URL ||
+    "https://eth-rinkeby.alchemyapi.io/v2/<API KEY>"
+
+const RINKEBY_API_KEY =
+    process.env.RINKEBY_API_KEY || "<API KEY>"
+
+const RINKEBY_ACCOUNTS = [
+    process.env.RINKEBY_PK0 || "<RINKEBY PRIVATE KEY 0>",
+    process.env.RINKEBY_PK1 || "<RINKEBY PRIVATE KEY 1>",
+    // process.env.RINKEBY_PK2 || "<RINKEBY PRIVATE KEY 2>",
+    // process.env.RINKEBY_PK3 || "<RINKEBY PRIVATE KEY 3>",
 ]
 
 const config: HardhatUserConfig = {
@@ -25,7 +39,11 @@ const config: HardhatUserConfig = {
             chainId: 1337,
             accounts: GANACHE_ACCOUNTS,
         },
-        // rinkeby: {},
+        rinkeby: {
+            url: RINKEBY_RPC_URL,
+            chainId: 4,
+            accounts: RINKEBY_ACCOUNTS,
+        },
     },
     solidity: {
         compilers: [
@@ -56,6 +74,11 @@ const config: HardhatUserConfig = {
         currency: "USD",
         outputFile: "gas-report.txt",
         noColors: true,
+    },
+    etherscan: {
+        apiKey: {
+            rinkeby: "vwqC-3v_RZAtCxEVK2FCwSpki-orGnxg",
+        },
     },
 }
 
