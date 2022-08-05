@@ -253,9 +253,9 @@ contract ABCToken is ERC777Token, Token {
         bytes calldata data,
         bytes memory operatorData
     ) public override {
-        _basicRevertCheck(from, amount);
         if (from == address(0))
             revert ABCToken__BurnFromNoOne();
+        _basicRevertCheck(from, amount);
 
         _callTokenToSendHook(
             msg.sender,
@@ -367,6 +367,9 @@ contract ABCToken is ERC777Token, Token {
         returns (bool success)
     {
         success = false;
+
+        if (msg.sender == _spender)
+            revert ABCToken__SameHolderAndOperator();
 
         _holderOperatorsAllowance[msg.sender][
             _spender
