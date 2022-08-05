@@ -70,10 +70,10 @@ const config: HardhatUserConfig = {
         },
     },
     gasReporter: {
-        enabled: false,
-        currency: "USD",
+        enabled: true,
         outputFile: "gas-report.txt",
         noColors: true,
+        currency: "USD",
     },
     etherscan: {
         apiKey: {

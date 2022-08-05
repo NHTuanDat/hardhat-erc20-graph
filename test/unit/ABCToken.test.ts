@@ -212,6 +212,24 @@ describe("ABCToken unit test", async () => {
                 )
         })
 
+        it("Should emit transfer signal", async () => {
+            await expect(
+                abcToken.send(
+                    recipient,
+                    parseEther("59"),
+                    formatBytes32String(
+                        "Hello! I am Barry B. Benson!"
+                    )
+                )
+            )
+                .to.emit(abcToken, "Transfer")
+                .withArgs(
+                    deployer,
+                    recipient,
+                    parseEther("59")
+                )
+        })
+
         it("Balance after Send function call should be correct", async () => {
             const holderBalanceBefore =
                 await abcToken.balanceOf(deployer)
@@ -338,6 +356,28 @@ describe("ABCToken unit test", async () => {
                     formatBytes32String(
                         "I am from the Bee Movie!"
                     )
+                )
+        })
+
+        it("Should emit transfer signal", async () => {
+            await expect(
+                abcToken2.operatorSend(
+                    deployer,
+                    recipient,
+                    parseEther("59"),
+                    formatBytes32String(
+                        "Hello! I am Barry B. Benson!"
+                    ),
+                    formatBytes32String(
+                        "I am from the Bee Movie!"
+                    )
+                )
+            )
+                .to.emit(abcToken, "Transfer")
+                .withArgs(
+                    deployer,
+                    recipient,
+                    parseEther("59")
                 )
         })
 
@@ -556,17 +596,32 @@ describe("ABCToken unit test", async () => {
                     )
                 )
         })
-    })
 
-    describe("send", () => {
-        it("Revert when you send tokens to no one", async () => {
+        it("Revert when you try to burn from no one", async () => {
             await expect(
-                abcToken.send(
+                abcToken2.operatorBurn(
                     ADDRESS_ZERO,
                     parseEther("59"),
                     formatBytes32String(
                         "Hello! I am Barry B. Benson!"
+                    ),
+                    formatBytes32String(
+                        "I am from the Bee Movie!"
                     )
+                )
+            ).to.be.revertedWithCustomError(
+                abcToken2,
+                "ABCToken__BurnFromNoOne"
+            )
+        })
+    })
+
+    describe("transfer", () => {
+        it("Revert when you transfer tokens to no one", async () => {
+            await expect(
+                abcToken.transfer(
+                    ADDRESS_ZERO,
+                    parseEther("59")
                 )
             ).to.be.revertedWithCustomError(
                 abcToken,
@@ -576,12 +631,9 @@ describe("ABCToken unit test", async () => {
 
         it("Revert when you dont have enough tokens", async () => {
             await expect(
-                abcToken.send(
+                abcToken.transfer(
                     recipient,
-                    parseEther("137"),
-                    formatBytes32String(
-                        "Hello! I am Barry B. Benson!"
-                    )
+                    parseEther("137")
                 )
             ).to.be.revertedWithCustomError(
                 abcToken,
@@ -592,14 +644,11 @@ describe("ABCToken unit test", async () => {
         /// TODO: test ABCToken__ERC777InterfaceNotImplementeda error
         /// TODO: test ABCToken__RecipientRevert error
 
-        it("Should emit sent signal", async () => {
+        it("Should emit send signal", async () => {
             await expect(
-                abcToken.send(
+                abcToken.transfer(
                     recipient,
-                    parseEther("59"),
-                    formatBytes32String(
-                        "Hello! I am Barry B. Benson!"
-                    )
+                    parseEther("59")
                 )
             )
                 .to.emit(abcToken, "Sent")
@@ -608,25 +657,35 @@ describe("ABCToken unit test", async () => {
                     deployer,
                     recipient,
                     parseEther("59"),
-                    formatBytes32String(
-                        "Hello! I am Barry B. Benson!"
-                    ),
+                    "0x",
                     "0x"
                 )
         })
 
-        it("Balance after Send function call should be correct", async () => {
+        it("Should emit transfer signal", async () => {
+            await expect(
+                abcToken.transfer(
+                    recipient,
+                    parseEther("59")
+                )
+            )
+                .to.emit(abcToken, "Transfer")
+                .withArgs(
+                    deployer,
+                    recipient,
+                    parseEther("59")
+                )
+        })
+
+        it("Balance after transfer should be correct", async () => {
             const holderBalanceBefore =
                 await abcToken.balanceOf(deployer)
             const recipientBalanceBefore =
                 await abcToken.balanceOf(recipient)
 
-            await abcToken.send(
+            await abcToken.transfer(
                 recipient,
-                parseEther("59"),
-                formatBytes32String(
-                    "Hello! I am Barry B. Benson!"
-                )
+                parseEther("59")
             )
             const holderBalanceAfter =
                 await abcToken.balanceOf(deployer)
@@ -645,6 +704,196 @@ describe("ABCToken unit test", async () => {
                         recipientBalanceAfter
                     )
                 )
+            )
+        })
+    })
+
+    describe("transferFrom when you are authorized", async () => {
+        beforeEach(async () => {
+            await abcToken.authorizeOperator(operator)
+        })
+
+        it("Revert when holder send tokens to no one", async () => {
+            await expect(
+                abcToken2.transferFrom(
+                    deployer,
+                    ADDRESS_ZERO,
+                    parseEther("59")
+                )
+            ).to.be.revertedWithCustomError(
+                abcToken2,
+                "ABCToken__SendTokenToNoOne"
+            )
+        })
+
+        it("Revert when your authorization got revoked", async () => {
+            await abcToken.revokeOperator(operator)
+            await expect(
+                abcToken2.transferFrom(
+                    deployer,
+                    recipient,
+                    parseEther("59")
+                )
+            ).to.be.revertedWithCustomError(
+                abcToken2,
+                "ABCToken__NotAuthorized"
+            )
+        })
+
+        it("Revert when holder dont have enough tokens", async () => {
+            await expect(
+                abcToken2.transferFrom(
+                    deployer,
+                    recipient,
+                    parseEther("137")
+                )
+            ).to.be.revertedWithCustomError(
+                abcToken2,
+                "ABCToken__NotEnoughBalance"
+            )
+        })
+
+        /// TODO: test ABCToken__ERC777InterfaceNotImplementeda error
+        /// TODO: test ABCToken__RecipientRevert error
+
+        it("Should emit sent signal", async () => {
+            await expect(
+                abcToken2.transferFrom(
+                    deployer,
+                    recipient,
+                    parseEther("59")
+                )
+            )
+                .to.emit(abcToken2, "Sent")
+                .withArgs(
+                    operator,
+                    deployer,
+                    recipient,
+                    parseEther("59"),
+                    "0x",
+                    "0x"
+                )
+        })
+
+        it("Should emit transfer signal", async () => {
+            await expect(
+                abcToken.transferFrom(
+                    deployer,
+                    recipient,
+                    parseEther("59")
+                )
+            )
+                .to.emit(abcToken, "Transfer")
+                .withArgs(
+                    deployer,
+                    recipient,
+                    parseEther("59")
+                )
+        })
+
+        it("Balance after transferFrom call should be correct", async () => {
+            const holderBalanceBefore =
+                await abcToken2.balanceOf(deployer)
+            const recipientBalanceBefore =
+                await abcToken2.balanceOf(recipient)
+            const operatorBalanceBefore =
+                await abcToken2.balanceOf(operator)
+            await abcToken2.transferFrom(
+                deployer,
+                recipient,
+                parseEther("59")
+            )
+            const holderBalanceAfter =
+                await abcToken2.balanceOf(deployer)
+            const recipientBalanceAfter =
+                await abcToken2.balanceOf(recipient)
+            const operatorBalanceAfter =
+                await abcToken2.balanceOf(operator)
+
+            assert.equal(
+                formatEther(
+                    holderBalanceBefore.add(
+                        recipientBalanceBefore.add(
+                            operatorBalanceBefore
+                        )
+                    )
+                ),
+                formatEther(
+                    holderBalanceAfter.add(
+                        recipientBalanceAfter.add(
+                            operatorBalanceAfter
+                        )
+                    )
+                )
+            )
+        })
+    })
+
+    describe("approve", async () => {
+        it("Revert when you try to approve yourself", async () => {
+            await expect(
+                abcToken.approve(deployer, parseEther("43"))
+            ).to.be.revertedWithCustomError(
+                abcToken,
+                "ABCToken__SameHolderAndOperator"
+            )
+        })
+
+        it("Emit signal when approve operator", async () => {
+            await expect(
+                abcToken.approve(operator, parseEther("43"))
+            )
+                .to.emit(abcToken, "Approval")
+                .withArgs(
+                    deployer,
+                    operator,
+                    parseEther("43")
+                )
+        })
+    })
+
+    describe("allowance", () => {
+        it("Return correctly when call it yourself", async () => {
+            assert(
+                formatEther(
+                    await abcToken.allowance(
+                        deployer,
+                        deployer
+                    )
+                ),
+                "101.0"
+            )
+        })
+        it("Return correctly when hasnt authorize", async () => {
+            assert(
+                abcToken.allowance(deployer, operator),
+                "0.0"
+            )
+        })
+
+        it("Return correctly when has approve", async () => {
+            await abcToken.approve(
+                operator,
+                parseEther("43")
+            )
+            assert(
+                abcToken.allowance(deployer, operator),
+                "43.0"
+            )
+        })
+
+        it("Return correctly when authorization has been revoked", async () => {
+            await abcToken.approve(
+                operator,
+                parseEther("43")
+            )
+            await abcToken.approve(
+                operator,
+                parseEther("0")
+            )
+            assert(
+                abcToken.allowance(deployer, operator),
+                "0.0"
             )
         })
     })
