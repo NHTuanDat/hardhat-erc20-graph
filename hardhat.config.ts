@@ -77,7 +77,7 @@ const config: HardhatUserConfig = {
     },
     etherscan: {
         apiKey: {
-            rinkeby: "vwqC-3v_RZAtCxEVK2FCwSpki-orGnxg",
+            rinkeby: "",
         },
     },
 }

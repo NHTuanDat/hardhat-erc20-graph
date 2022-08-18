@@ -18,6 +18,8 @@ error ABCToken__SameHolderAndOperator();
 error ABCToken__SendAmountNotDivisible();
 error ABCToken__SendTokenToNoOne();
 error ABCToken__NotEnoughAllowance();
+error ABCToken__NotOwner();
+error ABCToken__MintToNoOne();
 
 /// TODO: add ERC20 compatiple
 contract ABCToken is ERC777Token, Token {
@@ -29,81 +31,59 @@ contract ABCToken is ERC777Token, Token {
 
     // address internal immutable i_deployer;
     // address[] holders;
-    mapping(address => mapping(address => bool))
-        internal _holderOperators;
+    mapping(address => mapping(address => bool)) internal _holderOperators;
 
-    mapping(address => mapping(address => uint256))
-        internal _holderOperatorsAllowance;
+    mapping(address => mapping(address => uint256)) internal _holderOperatorsAllowance;
 
     // TODO: CHANGE TO THE CORRECT ADDRESS BEFORE DEPLOY
-    IERC1820Registry internal constant _ERC1820_REGISTRY =
-        IERC1820Registry(
-            0x1820a4B7618BdE71Dce8cdc73aAB6C95905faD24
-        );
+    IERC1820Registry internal constant _ERC1820_REGISTRY = IERC1820Registry(0x1820a4B7618BdE71Dce8cdc73aAB6C95905faD24);
+    address s_owner;
 
     constructor() {
-        _addressBalance[msg.sender] = 101e18;
-        _totalTokenSupply = 101e18;
+        // _addressBalance[msg.sender] = 101 ether;
+        // _totalTokenSupply = 101 ether;
+        // emit Minted(msg.sender, msg.sender, 101 ether, "", "");
+        s_owner = msg.sender;
+        mint(101 ether, bytes(""));
+    }
+
+    modifier OwnerOnly() {
+        if (msg.sender != s_owner) revert ABCToken__NotOwner();
+        _;
+    }
+
+    function changeOwner(address to) external OwnerOnly {
+        s_owner = to;
     }
 
     /// Get the name of the token
-    function name()
-        external
-        pure
-        override(ERC777Token, Token)
-        returns (string memory)
-    {
+    function name() external pure override(ERC777Token, Token) returns (string memory) {
         return "Alphabet";
     }
 
     /// Get the symbol of the token
-    function symbol()
-        external
-        pure
-        override(ERC777Token, Token)
-        returns (string memory)
-    {
+    function symbol() external pure override(ERC777Token, Token) returns (string memory) {
         return "ABC";
     }
 
     /// Get the total number of minted tokens.
-    function totalSupply()
-        external
-        view
-        override(ERC777Token, Token)
-        returns (uint256)
-    {
+    function totalSupply() external view override(ERC777Token, Token) returns (uint256) {
         return _totalTokenSupply;
     }
 
     /// Get the balance of the account with address holder .
     /// The balance MUST be zero ( 0 ) or higher.
-    function balanceOf(address holder)
-        external
-        view
-        override(ERC777Token, Token)
-        returns (uint256)
-    {
+    function balanceOf(address holder) external view override(ERC777Token, Token) returns (uint256) {
         return _addressBalance[holder];
     }
 
     /// Get the smallest part of the token that’s not divisible.
-    function granularity()
-        external
-        pure
-        override
-        returns (uint256)
-    {
+    function granularity() external pure override returns (uint256) {
         return _GRANULARITY;
     }
 
     /// Get the list of default operators as defined by the token contract.
-    function defaultOperators()
-        external
-        pure
-        override
-        returns (address[] memory)
-    {
+    function defaultOperators() external pure override returns (address[] memory) {
         address[] memory operators;
         // operators[0] = msg.sender;
         // operators[1] = i_deployer;
@@ -111,12 +91,7 @@ contract ABCToken is ERC777Token, Token {
     }
 
     /// Indicate whether the operator address is an operator of the holder address.
-    function isOperatorFor(address operator, address holder)
-        public
-        view
-        override
-        returns (bool)
-    {
+    function isOperatorFor(address operator, address holder) public view override returns (bool) {
         if (holder == operator) {
             return true;
         }
@@ -125,24 +100,16 @@ contract ABCToken is ERC777Token, Token {
     }
 
     /// Set a third party operator address as an operator of msg.sender to send and burn tokens on its behalf.
-    function authorizeOperator(address operator)
-        external
-        override
-    {
-        if (msg.sender == operator)
-            revert ABCToken__SameHolderAndOperator();
+    function authorizeOperator(address operator) external override {
+        if (msg.sender == operator) revert ABCToken__SameHolderAndOperator();
 
         _holderOperators[msg.sender][operator] = true;
         emit AuthorizedOperator(operator, msg.sender);
     }
 
     /// Remove the right of the operator address to be an operator for msg.sender and to send and burn tokens on its behalf.
-    function revokeOperator(address operator)
-        external
-        override
-    {
-        if (msg.sender == operator)
-            revert ABCToken__SameHolderAndOperator();
+    function revokeOperator(address operator) external override {
+        if (msg.sender == operator) revert ABCToken__SameHolderAndOperator();
 
         _holderOperators[msg.sender][operator] = false;
         emit RevokedOperator(operator, msg.sender);
@@ -154,13 +121,7 @@ contract ABCToken is ERC777Token, Token {
         uint256 amount,
         bytes calldata data
     ) external override {
-        operatorSend(
-            msg.sender,
-            to,
-            amount,
-            data,
-            bytes("")
-        );
+        operatorSend(msg.sender, to, amount, data, bytes(""));
     }
 
     /// Send the 'amount' of tokens on behalf of the address 'from' to the address 'to'.
@@ -173,54 +134,39 @@ contract ABCToken is ERC777Token, Token {
     ) public override {
         // Simple first error check
         _basicRevertCheck(from, amount);
-        if (to == address(0))
-            revert ABCToken__SendTokenToNoOne();
+        if (to == address(0)) revert ABCToken__SendTokenToNoOne();
 
         // recipient ERC777
-        address recipientImplementerAddress = _ERC1820_REGISTRY
-                .getInterfaceImplementer(
-                    to,
-                    keccak256("ERC777TokensRecipient")
-                );
+        address recipientImplementerAddress = _ERC1820_REGISTRY.getInterfaceImplementer(
+            to,
+            keccak256("ERC777TokensRecipient")
+        );
 
-        if (
-            to.isContract() &&
-            recipientImplementerAddress == address(0)
-        ) revert ABCToken__ERC777InterfaceNotImplemented();
+        if (to.isContract() && recipientImplementerAddress == address(0))
+            revert ABCToken__ERC777InterfaceNotImplemented();
 
         // call holder ERC777 hook before changing state
-        _callTokenToSendHook(
-            msg.sender,
-            from,
-            to,
-            amount,
-            data,
-            operatorData
-        );
+        _callTokenToSendHook(msg.sender, from, to, amount, data, operatorData);
 
         // Changing State
         _addressBalance[from] -= amount;
         _addressBalance[to] += amount;
         if (!isOperatorFor(msg.sender, from)) {
-            _holderOperatorsAllowance[from][
-                msg.sender
-            ] -= amount;
+            _holderOperatorsAllowance[from][msg.sender] -= amount;
         }
         // call recipient ERC777 hook after changing state.
         // Revert if recipient revert.
 
         if (recipientImplementerAddress != address(0)) {
             try
-                IERC777Recipient(
-                    recipientImplementerAddress
-                ).tokensReceived(
-                        msg.sender,
-                        from,
-                        to,
-                        amount,
-                        data,
-                        operatorData
-                    )
+                IERC777Recipient(recipientImplementerAddress).tokensReceived(
+                    msg.sender,
+                    from,
+                    to,
+                    amount,
+                    data,
+                    operatorData
+                )
             {} catch {
                 _addressBalance[from] += amount;
                 _addressBalance[to] -= amount;
@@ -228,22 +174,12 @@ contract ABCToken is ERC777Token, Token {
             }
         }
 
-        emit Sent(
-            msg.sender,
-            from,
-            to,
-            amount,
-            data,
-            operatorData
-        );
+        emit Sent(msg.sender, from, to, amount, data, operatorData);
 
         emit Transfer(from, to, amount);
     }
 
-    function burn(uint256 amount, bytes calldata data)
-        external
-        override
-    {
+    function burn(uint256 amount, bytes calldata data) external override {
         operatorBurn(msg.sender, amount, data, bytes(""));
     }
 
@@ -253,49 +189,27 @@ contract ABCToken is ERC777Token, Token {
         bytes calldata data,
         bytes memory operatorData
     ) public override {
-        if (from == address(0))
-            revert ABCToken__BurnFromNoOne();
+        if (from == address(0)) revert ABCToken__BurnFromNoOne();
         _basicRevertCheck(from, amount);
 
-        _callTokenToSendHook(
-            msg.sender,
-            from,
-            address(0),
-            amount,
-            data,
-            operatorData
-        );
+        _callTokenToSendHook(msg.sender, from, address(0), amount, data, operatorData);
 
         // State Change
         _addressBalance[from] -= amount;
         _totalTokenSupply -= amount;
 
-        emit Burned(
-            msg.sender,
-            from,
-            amount,
-            data,
-            operatorData
-        );
+        emit Burned(msg.sender, from, amount, data, operatorData);
 
         /// ERC20 Compatiple
         emit Transfer(from, address(0), amount);
     }
 
-    function _basicRevertCheck(address from, uint256 amount)
-        internal
-        view
-    {
-        if (
-            !isOperatorFor(msg.sender, from) &&
-            allowance(from, msg.sender) < amount
-        ) {
+    function _basicRevertCheck(address from, uint256 amount) internal view {
+        if (!isOperatorFor(msg.sender, from) && allowance(from, msg.sender) < amount) {
             revert ABCToken__NotAuthorized();
         }
-        if (amount % _GRANULARITY != 0)
-            revert ABCToken__SendAmountNotDivisible();
-        if (amount > _addressBalance[from])
-            revert ABCToken__NotEnoughBalance();
+        if (amount % _GRANULARITY != 0) revert ABCToken__SendAmountNotDivisible();
+        if (amount > _addressBalance[from]) revert ABCToken__NotEnoughBalance();
     }
 
     function _callTokenToSendHook(
@@ -306,21 +220,12 @@ contract ABCToken is ERC777Token, Token {
         bytes memory data,
         bytes memory operatorData
     ) internal {
-        address holderImplementerAddress = _ERC1820_REGISTRY
-            .getInterfaceImplementer(
-                from,
-                keccak256("ERC777TokensSender")
-            );
+        address holderImplementerAddress = _ERC1820_REGISTRY.getInterfaceImplementer(
+            from,
+            keccak256("ERC777TokensSender")
+        );
         if (holderImplementerAddress != address(0)) {
-            IERC777Sender(holderImplementerAddress)
-                .tokensToSend(
-                    operator,
-                    from,
-                    to,
-                    amount,
-                    data,
-                    operatorData
-                );
+            IERC777Sender(holderImplementerAddress).tokensToSend(operator, from, to, amount, data, operatorData);
         }
     }
 
@@ -329,19 +234,9 @@ contract ABCToken is ERC777Token, Token {
         return 18;
     }
 
-    function transfer(address to, uint256 amount)
-        external
-        override
-        returns (bool success)
-    {
+    function transfer(address to, uint256 amount) external override returns (bool success) {
         success = false;
-        operatorSend(
-            msg.sender,
-            to,
-            amount,
-            bytes(""),
-            bytes("")
-        );
+        operatorSend(msg.sender, to, amount, bytes(""), bytes(""));
         success = true;
     }
 
@@ -351,43 +246,71 @@ contract ABCToken is ERC777Token, Token {
         uint256 amount
     ) external override returns (bool success) {
         success = false;
-        operatorSend(
-            from,
-            to,
-            amount,
-            bytes(""),
-            bytes("")
-        );
+        operatorSend(from, to, amount, bytes(""), bytes(""));
         success = true;
     }
 
-    function approve(address _spender, uint256 _value)
-        external
-        override
-        returns (bool success)
-    {
+    function approve(address _spender, uint256 _value) external override returns (bool success) {
         success = false;
 
-        if (msg.sender == _spender)
-            revert ABCToken__SameHolderAndOperator();
+        if (msg.sender == _spender) revert ABCToken__SameHolderAndOperator();
 
-        _holderOperatorsAllowance[msg.sender][
-            _spender
-        ] = _value;
+        _holderOperatorsAllowance[msg.sender][_spender] = _value;
 
         emit Approval(msg.sender, _spender, _value);
 
         success = true;
     }
 
-    function allowance(address _owner, address _spender)
-        public
-        view
-        override
-        returns (uint256 remaining)
-    {
-        remaining = _holderOperatorsAllowance[_owner][
-            _spender
-        ];
+    function allowance(address _owner, address _spender) public view override returns (uint256 remaining) {
+        remaining = _holderOperatorsAllowance[_owner][_spender];
+    }
+
+    function mint(uint256 amount, bytes memory data) public OwnerOnly {
+        operatorMint(msg.sender, amount, data, "");
+    }
+
+    function operatorMint(
+        address to,
+        uint256 amount,
+        bytes memory data,
+        bytes memory operatorData
+    ) public OwnerOnly {
+        if (amount % _GRANULARITY != 0) revert ABCToken__SendAmountNotDivisible();
+
+        address recipientImplementerAddress = _ERC1820_REGISTRY.getInterfaceImplementer(
+            to,
+            keccak256("ERC777TokensRecipient")
+        );
+
+        if (to.isContract() && recipientImplementerAddress == address(0))
+            revert ABCToken__ERC777InterfaceNotImplemented();
+
+        if (to == address(0)) revert ABCToken__MintToNoOne();
+
+        _addressBalance[to] += amount;
+        _totalTokenSupply += amount;
+
+        if (recipientImplementerAddress != address(0)) {
+            try
+                IERC777Recipient(recipientImplementerAddress).tokensReceived(
+                    msg.sender,
+                    address(0),
+                    to,
+                    amount,
+                    data,
+                    operatorData
+                )
+            {} catch {
+                _addressBalance[to] -= amount;
+                _totalTokenSupply -= amount;
+                revert ABCToken__RecipientRevert();
+            }
+        }
+
+        emit Minted(msg.sender, to, amount, data, operatorData);
+
+        /// ERC20 Compatiple
+        emit Transfer(address(0), to, amount);
     }
 }

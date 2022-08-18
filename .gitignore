@@ -9,3 +9,18 @@ typechain-types
 cache
 artifacts
 
+#Hardhat deploy
+deployments/
+
+# vscode
+.vscode/
+
+# The Graph
+build/
+generated/
+
+# prettiecr
+.prettierrc
+
+#yarn
+yarn.lock

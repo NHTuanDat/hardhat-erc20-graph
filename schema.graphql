@@ -1,0 +1,14 @@
+type Wallet @entity {
+    id: Bytes!
+    balance: BigInt!
+    outgoingTransactions: [Transaction!]! @derivedFrom(field: "from")
+    incomingTransactions: [Transaction!]! @derivedFrom(field: "to")
+}
+
+type Transaction @entity(immutable: true) {
+    id: Bytes!
+    from: Wallet!
+    to: Wallet!
+    amount: BigInt!
+    timestamp: BigInt!
+}

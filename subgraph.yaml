@@ -1,0 +1,30 @@
+specVersion: 0.0.4
+description: ABC Token querry
+# repository: https://github.com/graphprotocol/example-subgraph
+schema:
+    file: ./schema.graphql
+dataSources:
+    - kind: ethereum/contract
+      name: ABCToken
+      network: hardhat
+      source:
+          address: "0xe7f1725E7734CE288F8367e1Bb143E90bb3F0512"
+          abi: ABCToken
+      mapping:
+          kind: ethereum/events
+          apiVersion: 0.0.6
+          language: wasm/assemblyscript
+          entities:
+              - Wallet
+              - Transaction
+          abis:
+              - name: ABCToken
+                file: ./artifacts/contracts/ABCToken.sol/ABCToken.json
+          eventHandlers:
+              - event: Minted(indexed address,indexed address,uint256,bytes,bytes)
+                handler: handleMinted
+              - event: Sent(indexed address,indexed address,indexed address,uint256,bytes,bytes)
+                handler: handleSent
+              - event: Burned(indexed address,indexed address,uint256,bytes,bytes)
+                handler: handleBurned
+          file: ./src/mapping.ts
