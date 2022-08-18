@@ -3,6 +3,12 @@
 This project is for learning `ERC20` and `The Graph`. I'm using `The Graph` for querying `ABC ERC20 Token` balances of users.
 The contract is written with `hardhat` framework.
 
+# Showcase
+
+![The Graph Showcase 1]()
+
+![The Graph Showcase 2]()
+
 # The Graph content
 
 ```graphql
@@ -131,7 +137,9 @@ yarn
 yarn hardhat node
 ```
 
-2. Remember to run the graph node docker connected to hardhat net first. Then deploy the subgraph
+2. Copy the contract address then modify the address in `subgraph.yaml` file.
+
+3. Remember to run the graph node docker connected to hardhat net first. Then deploy the subgraph
 
 ```shell
 yarn codegen
