@@ -5,9 +5,9 @@ The contract is written with `hardhat` framework.
 
 # Showcase
 
-![The Graph Showcase 1](https://github.com/NHTuanDat/hh-erc777-tmplt/blob/master/Screenshot%202022-08-18%20103602.png)
+![The Graph Showcase 1](https://github.com/NHTuanDat/hardhat-erc20-graph/blob/master/Screenshot%202022-08-18%20103602.png)
 
-![The Graph Showcase 2](https://github.com/NHTuanDat/hh-erc777-tmplt/blob/master/Screenshot%202022-08-18%20103647.png)
+![The Graph Showcase 2](https://github.com/NHTuanDat/hardhat-erc20-graph/blob/master/Screenshot%202022-08-18%20103647.png)
 
 # The Graph content
 
